@@ -67,10 +67,13 @@ project.
 ## Installation
 
 The plugin requires a working ColdFront deployment (tested against
-ColdFront 1.1.x). Inside your ColdFront environment:
+ColdFront 1.1.x). It is not published on PyPI (yet); install it directly
+from the
+[GitHub repository](https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik)
+inside your ColdFront environment:
 
 ```console
-$ uv pip install coldfront-plugin-dfg-fachsystematik
+$ uv pip install git+https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik.git
 ```
 
 Enable the plugin by creating `coldfront/config/plugins/dfg_fachsystematik.py`
