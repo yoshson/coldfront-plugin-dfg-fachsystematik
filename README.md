@@ -214,5 +214,32 @@ $ uv run ruff check
 $ uv run ruff format --check
 ```
 
-The parser is free of Django imports and covered by unit tests; the Django
-integration is intended to be exercised inside a ColdFront test deployment.
+The parser is free of Django imports and covered by unit tests.
+
+### Integration tests
+
+The Django integration is exercised against a **basic ColdFront test
+instance** booted in-process: `tests/integration/settings.py` assembles the
+settings from ColdFront's own config fragments, pytest-django creates and
+migrates an in-memory SQLite database (running the plugin's data migration),
+and the tests drive the real project create/update views with a logged-in
+PI. Run them with the `integration` dependency group, which installs
+ColdFront 1.1.x:
+
+```console
+$ uv sync --group integration
+$ uv run pytest tests/integration
+```
+
+Without the group, plain `uv run pytest` skips `tests/integration` at
+collection time and runs only the parser unit tests.
+
+The repo root contains a minimal `manage.py` pointing at the test instance
+settings (pytest-django needs it to locate the project). It also allows
+exploring the instance by hand:
+
+```console
+$ uv run --group integration python manage.py check
+$ DB_URL=sqlite:///coldfront.db uv run --group integration python manage.py migrate
+```
+

@@ -18,6 +18,12 @@ dev = [
     "pytest>=8.0",
     "ruff>=0.17.3",
 ]
+# Integration tests boot a real ColdFront instance in-process. Keep the
+# ColdFront pin in sync with the version the plugin's patch.py targets.
+integration = [
+    "coldfront>=1.1,<1.2",
+    "pytest-django>=4.9",
+]
 
 [build-system]
 requires = ["uv_build>=0.13.5,<0.14.0"]
@@ -55,3 +61,10 @@ allowed-confusables = ["–", "›", "…"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Settings for the ColdFront test instance used by tests/integration (with
+# the "integration" dependency group). Without pytest-django installed the
+# option is unknown; silence the resulting config warning for unit-only runs.
+DJANGO_SETTINGS_MODULE = "tests.integration.settings"
+filterwarnings = [
+    "ignore::pytest.PytestConfigWarning",
+]

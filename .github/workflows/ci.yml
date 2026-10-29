@@ -52,3 +52,20 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+  integration:
+    name: Integration (ColdFront test instance)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install dependencies (incl. ColdFront)
+        run: uv sync --group integration
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration

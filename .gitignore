@@ -4,3 +4,5 @@ __pycache__/
 dist/
 .pytest_cache/
 *.egg-info/
+# Scratch database from the manual manage.py example in the README.
+coldfront.db
