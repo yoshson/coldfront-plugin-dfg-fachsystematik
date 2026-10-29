@@ -1,8 +1,17 @@
-"""Django admin integration for the DFG Fachsystematik plugin."""
+"""Django admin integration for the DFG Fachsystematik plugin.
+
+``DfgSubjectAdmin`` is the plugin's own admin section, registered normally
+via autodiscovery. ``DfgFieldOfScienceAdmin`` replaces ColdFront's plain
+``FieldOfScienceAdmin``; it is *not* registered here, but by
+``patch.apply_patches``, so that replacing a ColdFront admin stays behind
+the ``DFG_FACHSYSTEMATIK_PATCH_PROJECT_FORM`` setting.
+"""
 
 from django.contrib import admin
 from django.urls import reverse
 from django.utils.html import format_html
+
+from coldfront.core.field_of_science.models import FieldOfScience
 
 from .models import DfgSubject
 

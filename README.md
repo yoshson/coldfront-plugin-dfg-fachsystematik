@@ -161,6 +161,13 @@ subjects with their metadata and a link to the underlying `FieldOfScience`
 row, filterable by scientific discipline and subject area. ColdFront's own
 `FieldOfScience` admin remains untouched.
 
+On the project change page, the field of science is shown with the same
+grouped DFG selector as the front-end forms — without this, ColdFront 1.1.x
+omits `field_of_science` from its hardcoded admin change-form fields, so a
+subject could not be seen or corrected in the admin. (Without select2 being
+initialized on admin pages, the dropdown degrades to a plain, still-grouped
+`<select>`.)
+
 ## How the form integration works
 
 ColdFront currently has no extension point for modifying form fields, and
@@ -169,10 +176,13 @@ its forms select *all* `FieldOfScience` rows. At application startup
 
 1. replaces `ProjectCreateView.form_class` with
    `ProjectCreationFormWithDfgFieldOfScience`, whose `field_of_science`
-   field is the grouped DFG selector, and
+   field is the grouped DFG selector,
 2. wraps `ProjectUpdateView.get_form` to apply the same selector to the
    generated update form (only if it contains a `field_of_science` field,
-   so a customized `PROJECT_UPDATE_FIELDS` is respected).
+   so a customized `PROJECT_UPDATE_FIELDS` is respected), and
+3. extends `ProjectAdmin` so the project admin change form shows
+   `field_of_science` (omitted by ColdFront 1.1.x's `fields_change` tuple)
+   with the same selector, via the `formfield_for_foreignkey` hook.
 
 The selection is saved by ColdFront's own ModelForm machinery on the
 project's native `field_of_science` foreign key — there is no extra save
