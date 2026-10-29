@@ -1,0 +1,25 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+
+{% block content %}
+    <c-cf.card title="{% trans "DFG Fachsystematik" %}">
+        <c-cf.card.fields.item label="{% trans "Subject number" %}">
+            {{ object.number }}
+        </c-cf.card.fields.item>
+        <c-cf.card.fields.item label="{% trans "Name (English)" %}">
+            {{ object.name_en }}
+        </c-cf.card.fields.item>
+        <c-cf.card.fields.item label="{% trans "Name (German)" %}">
+            {{ object.name_de }}
+        </c-cf.card.fields.item>
+        <c-cf.card.fields.item label="{% trans "Review board (Fachkollegium)" %}">
+            {{ object.board_number }} {{ object.board_name_en }} · {{ object.board_name_de }}
+        </c-cf.card.fields.item>
+        <c-cf.card.fields.item label="{% trans "Subject area (Fachgebiet)" %}">
+            {{ object.area_number }} {{ object.area_name_en }} · {{ object.area_name_de }}
+        </c-cf.card.fields.item>
+        <c-cf.card.fields.item label="{% trans "Scientific discipline (Wissenschaftsbereich)" %}">
+            {{ object.discipline_number }} {{ object.discipline_name_en }} · {{ object.discipline_name_de }}
+        </c-cf.card.fields.item>
+    </c-cf.card>
+{% endblock content %}

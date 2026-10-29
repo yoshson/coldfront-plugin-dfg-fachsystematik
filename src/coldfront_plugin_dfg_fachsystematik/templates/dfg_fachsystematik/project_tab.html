@@ -1,0 +1,40 @@
+{% extends 'generic/object.html' %}
+{% load i18n %}
+
+{% block title %}{{ object }} · DFG Fachsystematik{% endblock %}
+
+{% block content %}
+    <c-cf.card title="{% trans "DFG Fachsystematik" %}">
+        {% if assignment %}
+            <c-cf.card.fields.item label="{% trans "Subject (Fach)" %}">
+                <a href="{% url 'coldfront_plugin_dfg_fachsystematik:dfgsubject' pk=assignment.subject.pk %}">
+                    {{ assignment.subject }}
+                </a>
+            </c-cf.card.fields.item>
+            <c-cf.card.fields.item label="{% trans "Review board (Fachkollegium)" %}">
+                {{ assignment.subject.board_number }} {{ assignment.subject.board_name_en }}
+            </c-cf.card.fields.item>
+            {% if perms.ras.change_project %}
+                <div class="mt-2">
+                    <c-cf.button
+                        as="a"
+                        href="{% url 'coldfront_plugin_dfg_fachsystematik:projectsubjectassignment_edit' pk=assignment.pk %}?project={{ object.pk }}&return_url={{ request.path }}"
+                    >{% trans "Change subject" %}</c-cf.button>
+                    <c-cf.button
+                        as="a"
+                        href="{% url 'coldfront_plugin_dfg_fachsystematik:projectsubjectassignment_delete' pk=assignment.pk %}?return_url={{ request.path }}"
+                    >{% trans "Remove subject" %}</c-cf.button>
+                </div>
+            {% endif %}
+        {% else %}
+            <c-cf.card.fields.item label="{% trans "Subject (Fach)" %}">
+                {% trans "No subject assigned." %}
+                {% if perms.ras.change_project %}
+                    <a href="{% url 'coldfront_plugin_dfg_fachsystematik:projectsubjectassignment_add' %}?project={{ object.pk }}&return_url={{ request.path }}">
+                        {% trans "Assign subject" %}
+                    </a>
+                {% endif %}
+            </c-cf.card.fields.item>
+        {% endif %}
+    </c-cf.card>
+{% endblock content %}

@@ -10,7 +10,7 @@ import os
 import re
 from dataclasses import dataclass
 from importlib.resources import files
-from typing import IO, Union
+from typing import IO
 
 #: The bundled CSV file shipping with the plugin.
 BUNDLED_CSV = "Fachsystematik_2024-2028.csv"
@@ -84,7 +84,7 @@ def _get(row: dict, column: str, row_number: str) -> str:
         ) from exc
 
 
-def parse_fachsystematik_csv(source: Union[str, bytes, IO, None] = None) -> list:
+def parse_fachsystematik_csv(source: str | bytes | IO | None = None) -> list:
     """Parse a Fachsystematik CSV into a list of ``FachsystematikEntry``.
 
     ``source`` may be a filesystem path, a file opened in text mode, or

@@ -1,20 +1,13 @@
-"""Form integration: turns ColdFront's field of science selection into a
-searchable, grouped DFG Fachsystematik subject selector.
-
-The selection is stored on the core ``Project.field_of_science`` foreign key;
-this module only changes *how* the options are presented: a select2 dropdown
-whose options are the 214 DFG subjects, grouped by review board
-(Fachkollegium), labelled in English and German so both languages are
-searchable. ColdFront ships select2 and initializes it on elements with the
-``fos-select2`` class, so reusing that class gives us the search box without
-extra JavaScript.
-"""
+"""Forms for the DFG Fachsystematik plugin (ColdFront 2.x)."""
 
 from typing import ClassVar
 
-from coldfront.core.field_of_science.models import FieldOfScience
-from coldfront.core.project.forms import ProjectCreationForm
+from coldfront.lib.forms import ColdFrontModelForm
+from coldfront.lib.forms.layout import FieldSet
 from django import forms
+from django.utils.translation import gettext_lazy as _
+
+from .models import DfgSubject, ProjectSubjectAssignment
 
 
 def board_group_label(dfg_subject):
@@ -25,84 +18,55 @@ def board_group_label(dfg_subject):
     )
 
 
-def subject_option_label(field_of_science):
+def subject_option_label(dfg_subject):
     """Dropdown label for a subject, bilingual so both languages are searchable."""
-    dfg_subject = field_of_science.dfg_subject
-    return f"{field_of_science.description} · {dfg_subject.name_de}"
+    return f"{dfg_subject.number} {dfg_subject.name_en} · {dfg_subject.name_de}"
 
 
-def dfg_subject_queryset():
-    """All ColdFront fields of science that are DFG subjects, in hierarchy order."""
-    return (
-        FieldOfScience.objects.filter(dfg_subject__isnull=False)
-        .select_related("dfg_subject")
-        .order_by("dfg_subject__board_number", "dfg_subject__number")
-    )
-
-
-class DfgFieldOfScienceChoiceField(forms.ModelChoiceField):
-    """A ModelChoiceField over FieldOfScience, grouped by review board.
+class DfgSubjectChoiceField(forms.ModelChoiceField):
+    """A ModelChoiceField over DfgSubject, grouped by review board.
 
     ChoiceWidget.optgroups renders entries whose label is a list/tuple as
-    <optgroup>, so ModelChoiceField's flat iterator is replaced with grouped
-    choices below. Validation stays queryset-based and untouched.
-
-    NOTE: the queryset setter of ModelChoiceField forwards the choices to the
-    widget, so the choices getter runs once per field instantiation; the
-    queryset caches its rows, so repeated access is cheap.
+    <optgroup>, so replacing the flat choices iterator with grouped choices
+    is enough. Validation stays queryset-based and untouched.
     """
 
-    default_widget_attrs: ClassVar[dict[str, str]] = {
-        "class": "fos-select2",
-        "data-placeholder": "Select a subject (Fach)",
-    }
-
     def __init__(self, *, queryset=None, **kwargs):
-        kwargs.setdefault("label", "Field of Science (DFG Fachsystematik)")
+        kwargs.setdefault("label", _("Subject (Fach)"))
         kwargs.setdefault(
             "help_text",
-            "Select the subject (Fach) that best describes this project "
-            "according to the DFG classification of scientific disciplines "
-            "(Fachsystematik 2024–2028).",
+            _("Select the subject (Fach) that best describes this project."),
         )
         kwargs.setdefault("empty_label", "")
-        if queryset is None:
-            queryset = dfg_subject_queryset()
-        super().__init__(queryset, **kwargs)
-        for attr, value in self.default_widget_attrs.items():
-            self.widget.attrs.setdefault(attr, value)
+        super().__init__(queryset or DfgSubject.objects.all(), **kwargs)
 
     @property
     def choices(self):
-        # Build grouped choices: [(group_label, [(pk, label), ...]), ...].
-        grouped = []
-        for field_of_science in self.queryset:
-            group = board_group_label(field_of_science.dfg_subject)
-            if not grouped or grouped[-1][0] != group:
-                grouped.append((group, []))
-            grouped[-1][1].append(
-                (field_of_science.pk, subject_option_label(field_of_science))
-            )
-        if self.empty_label is not None:
-            grouped.insert(0, ("", self.empty_label))
+        # Grouped choices: [(group_label, [(pk, label), ...]), ...].
+        grouped: list[tuple[str, list[tuple[int, str]]]] = []
+        for dfg_subject in self.queryset:
+            label = (board_group_label(dfg_subject), [])
+            if not grouped or grouped[-1][0] != label[0]:
+                grouped.append(label)
+            grouped[-1][1].append((dfg_subject.pk, subject_option_label(dfg_subject)))
         return grouped
 
-    @choices.setter
-    def choices(self, value):
-        # Mirror ChoiceField._set_choices for anyone assigning choices
-        # manually: forward them to the widget for rendering.
-        self.widget.choices = value
 
-    def label_from_instance(self, obj):
-        return subject_option_label(obj)
+class ProjectSubjectAssignmentForm(ColdFrontModelForm):
+    """Assign a DFG subject to a project.
 
+    The project is not a form field: the edit view sets it from the URL
+    before the form is bound, so the form only manages the subject.
+    """
 
-class ProjectCreationFormWithDfgFieldOfScience(ProjectCreationForm):
-    """ColdFront's project creation form selecting the DFG subject on the
-    core field_of_science foreign key, with a grouped bilingual dropdown."""
+    class Meta:
+        model = ProjectSubjectAssignment
+        fields: ClassVar[tuple[str, ...]] = ("subject", "tags")
+        fieldsets = (
+            FieldSet("subject", name=_("DFG Fachsystematik")),
+            FieldSet("tags", name=_("Tags")),
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Replace the flat all-fields dropdown with the grouped DFG selector.
-        # The saved value lands on Project.field_of_science natively.
-        self.fields["field_of_science"] = DfgFieldOfScienceChoiceField()
+        self.fields["subject"] = DfgSubjectChoiceField()

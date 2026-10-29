@@ -1,0 +1,22 @@
+{% load i18n %}
+<c-cf.card title="{% trans "DFG Fachsystematik" %}">
+    {% if assignment %}
+        <c-cf.card.fields.item label="{% trans "Subject (Fach)" %}">
+            <a href="{% url 'coldfront_plugin_dfg_fachsystematik:dfgsubject' pk=assignment.subject.pk %}">
+                {{ assignment.subject }}
+            </a>
+        </c-cf.card.fields.item>
+        <c-cf.card.fields.item label="{% trans "Review board (Fachkollegium)" %}">
+            {{ assignment.subject.board_number }} {{ assignment.subject.board_name_en }}
+        </c-cf.card.fields.item>
+    {% else %}
+        <c-cf.card.fields.item label="{% trans "Subject (Fach)" %}">
+            {% trans "No subject assigned." %}
+            {% if perms.ras.change_project %}
+                <a href="{% url 'coldfront_plugin_dfg_fachsystematik:projectsubjectassignment_add' %}?project={{ object.pk }}&return_url={{ request.path }}">
+                    {% trans "Assign subject" %}
+                </a>
+            {% endif %}
+        </c-cf.card.fields.item>
+    {% endif %}
+</c-cf.card>

@@ -35,11 +35,9 @@ class Command(BaseCommand):
 
         stats = loaders.import_fachsystematik(apps, entries)
 
-        for model_name, counts in stats.items():
-            self.stdout.write(
-                f"{model_name}: {counts['created']} created, "
-                f"{counts['updated']} updated"
-            )
+        self.stdout.write(
+            f"DfgSubject: {stats['created']} created, {stats['updated']} updated"
+        )
         self.stdout.write(
             self.style.SUCCESS(
                 f"Successfully imported {len(entries)} subjects (DFG Fachsystematik)."
