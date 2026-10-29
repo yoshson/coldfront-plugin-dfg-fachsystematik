@@ -37,9 +37,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Keep in sync with requires-python in pyproject.toml. The uv.lock
-        # resolves Django 4.2 / 5.2 / 6.1 depending on the interpreter.
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        # Keep in sync with requires-python in pyproject.toml.
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v5
 
