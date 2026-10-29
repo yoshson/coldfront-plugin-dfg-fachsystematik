@@ -123,14 +123,14 @@ descriptions in the admin are reverted on the next import.
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `DFG_FACHSYSTEMATIK_PATCH_PROJECT_FORM` | `True` | Automatically replace the field of science selection in the project create/update forms with the grouped DFG selector. Set to `False` if you want to wire the forms up yourself (use `coldfront_plugin_dfg_fachsystematik.forms.DfgFieldOfScienceChoiceField`) or use the plugin purely as a data importer. |
+| `DFG_FACHSYSTEMATIK_PATCH_PROJECT_FORM` | `True` | Automatically integrate with ColdFront: replace the field of science selection in the project create/update forms with the grouped DFG selector, add it to the project admin change form, and swap in the DFG-aware `FieldOfScience` admin. Set to `False` if you want to wire things up yourself (use `coldfront_plugin_dfg_fachsystematik.forms.DfgFieldOfScienceChoiceField` and `admin.DfgFieldOfScienceAdmin`) or use the plugin purely as a data importer. |
 
 ## Notes on the built-in field of science data
 
 - The prepopulated **NSF `FieldOfScience` rows are left untouched**, and
-  existing projects keep their values. Only the create/update forms are
-  narrowed to DFG subjects; `is_selectable` alone does not filter the core
-  forms.
+  existing projects keep their values. Only the create/update forms and the
+  admin are narrowed to DFG subjects; `is_selectable` alone does not filter
+  the core forms.
 - When a project with a legacy NSF value is **edited**, the update form
   offers only DFG subjects, so saving requires choosing a DFG subject —
   a natural way to reclassify legacy projects over time.
@@ -158,8 +158,16 @@ here because DFG subjects live in the same table.
 
 The plugin adds a *DFG subjects (Fächer)* admin section listing all imported
 subjects with their metadata and a link to the underlying `FieldOfScience`
-row, filterable by scientific discipline and subject area. ColdFront's own
-`FieldOfScience` admin remains untouched.
+row, filterable by scientific discipline and subject area.
+
+ColdFront's own `FieldOfScience` admin is replaced with a DFG-aware variant:
+the list view links each row to its DFG subject metadata, search also matches
+DFG numbers and German names, and the canonical
+`"<Fachnummer> <English name>"` descriptions of DFG rows are read-only (the
+importer enforces them on every load, so manual edits would silently be
+reverted — see below). NSF rows remain editable as before, and the row behind
+`FieldOfScience.DEFAULT_PK` (the model-level default for new projects) is
+kept in place and selectable by the importer.
 
 On the project change page, the field of science is shown with the same
 grouped DFG selector as the front-end forms — without this, ColdFront 1.1.x

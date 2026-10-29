@@ -14,7 +14,10 @@ application startup:
 - ``ProjectAdmin`` is extended so the Django admin project change form also
   shows ``field_of_science`` with the same selector: ColdFront 1.1.x lists
   the change-form fields in a hardcoded ``fields_change`` tuple that omits
-  the field entirely.
+  the field entirely, and
+- ColdFront's plain ``FieldOfScienceAdmin`` is replaced with the DFG-aware
+  ``DfgFieldOfScienceAdmin`` (DFG subject link in the list view, German
+  names searchable, canonical DFG descriptions read-only).
 
 The selected subject is saved on the core ``Project.field_of_science``
 foreign key; no extra save step or model is involved. If ColdFront's
@@ -22,6 +25,7 @@ internals change in an incompatible way, this is the only module that needs
 to be adapted.
 """
 
+import contextlib
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,9 +36,12 @@ def apply_patches():
 
     Idempotent: calling it multiple times (e.g. during tests) is safe.
     """
+    from coldfront.core.field_of_science.models import FieldOfScience
     from coldfront.core.project import admin as project_admin
     from coldfront.core.project import views as project_views
+    from django.contrib import admin as django_admin
 
+    from .admin import DfgFieldOfScienceAdmin
     from .forms import (
         DfgFieldOfScienceChoiceField,
         ProjectCreationFormWithDfgFieldOfScience,
@@ -106,4 +113,21 @@ def apply_patches():
         logger.info(
             "DFG Fachsystematik plugin: patched project admin to show the "
             "field of science with the DFG subject selector."
+        )
+
+    # Replace ColdFront's plain FieldOfScienceAdmin with the DFG-aware
+    # variant. Importing the core admin module first guarantees its
+    # registration exists (no-op if admin autodiscovery already ran), so
+    # the swap works regardless of INSTALLED_APPS order.
+    import coldfront.core.field_of_science.admin  # noqa: F401
+
+    if not isinstance(
+        django_admin.site._registry.get(FieldOfScience), DfgFieldOfScienceAdmin
+    ):
+        with contextlib.suppress(django_admin.sites.NotRegistered):
+            django_admin.site.unregister(FieldOfScience)
+        django_admin.site.register(FieldOfScience, DfgFieldOfScienceAdmin)
+        logger.info(
+            "DFG Fachsystematik plugin: replaced FieldOfScienceAdmin with "
+            "the DFG-aware admin."
         )

@@ -23,7 +23,8 @@ class DfgFachsystematikConfig(AppConfig):
         # manually or to use the plugin purely as a data source.
         if not getattr(settings, "DFG_FACHSYSTEMATIK_PATCH_PROJECT_FORM", True):
             logger.info(
-                "DFG Fachsystematik plugin: project form patching disabled via "
+                "DFG Fachsystematik plugin: ColdFront integration (project "
+                "forms and admin) disabled via "
                 "DFG_FACHSYSTEMATIK_PATCH_PROJECT_FORM."
             )
             return

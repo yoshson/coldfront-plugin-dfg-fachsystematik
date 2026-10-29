@@ -47,8 +47,9 @@ def import_fachsystematik(apps, entries):
 
     The import is idempotent and non-destructive: rows are updated in place;
     subjects absent from the CSV are kept in the database. The prepopulated
-    NSF ``FieldOfScience`` rows are never touched (existing projects keep
-    their values).
+    NSF ``FieldOfScience`` rows are never touched except for the row behind
+    ``FieldOfScience.DEFAULT_PK`` (kept in place and selectable, since new
+    projects default to it).
 
     Returns a dict with per-model ``created``/``updated`` counters.
     """
@@ -96,5 +97,18 @@ def import_fachsystematik(apps, entries):
                 dfg.save(update_fields=list(defaults))
                 stats["FieldOfScience"]["updated"] += 1
                 stats["DfgSubject"]["updated"] += 1
+
+        # Project.field_of_science defaults to FieldOfScience.DEFAULT_PK
+        # (an NSF fixture row). Make sure it exists and stays selectable so
+        # project creation paths relying on the model default keep working;
+        # the other NSF rows are never touched.
+        default_pk = getattr(FieldOfScience, "DEFAULT_PK", 149)
+        default_fos, created = FieldOfScience.objects.get_or_create(
+            pk=default_pk,
+            defaults={"description": "Other", "is_selectable": True},
+        )
+        if not created and not default_fos.is_selectable:
+            default_fos.is_selectable = True
+            default_fos.save(update_fields=["is_selectable"])
 
     return stats
