@@ -1,30 +1,34 @@
 # coldfront-plugin-dfg-fachsystematik
 
-A [ColdFront](https://coldfront.readthedocs.io/) plugin that lets PIs select a
-**field of science for their project according to the DFG
-Fachsystematik (2024–2028)** — the classification of scientific disciplines,
-subject areas, review boards and subjects published by the Deutsche
-Forschungsgemeinschaft (DFG, German Research Foundation).
+A [ColdFront](https://docs.coldfront.dev/) plugin that lets staff and PIs
+assign each project a **subject from the DFG Fachsystematik (2024–2028)** —
+the classification of scientific disciplines, subject areas, review boards
+and subjects published by the Deutsche Forschungsgemeinschaft (DFG, German
+Research Foundation).
+
+> **Branch note:** this branch targets **ColdFront 2.0.x** and integrates
+> through ColdFront's plugin API (`coldfront.lib.plugins.PluginConfig`).
+> For ColdFront 1.1.x, see the [`main` branch](https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik/tree/main),
+> which stores the subjects in ColdFront's legacy `FieldOfScience` table
+> instead.
 
 ## How it works
 
-The plugin stores the DFG classification **inside ColdFront's native field
-of science data**:
+ColdFront 2.x has no built-in field-of-science concept, so the plugin owns
+the classification data end to end:
 
-- Each of the 214 DFG subjects (Fächer) is imported as a selectable
-  `FieldOfScience` row whose description is the official number plus the
-  English name, e.g. `111-01 Prehistory and World Archaeology`.
-- The subject chosen at project creation is saved on the project's **core
-  `Project.field_of_science` foreign key** — no separate plugin model on the
-  project. The subject therefore appears everywhere ColdFront uses the field
-  of science: the project detail page, the project update form, project
-  search, FOS-based reports and the REST API.
-- The plugin's only model, `DfgSubject`, is a side table mapping each such
-  row to its DFG metadata: the German subject name and the numbers/names of
-  the review board (Fachkollegium), subject area (Fachgebiet) and scientific
-  discipline (Wissenschaftsbereich). This keeps the hierarchy queryable
-  (e.g. "all projects in subject area 34 Geosciences") and powers the
-  selection widget.
+- `DfgSubject` — each of the 214 DFG subjects (Fächer), carrying its official
+  number (e.g. `213-01`), the English and German subject names, and the
+  numbers/names of the review board (Fachkollegium), subject area
+  (Fachgebiet) and scientific discipline (Wissenschaftsbereich) above it.
+  Sourced from the same bilingual CSV used by the
+  [DFG-Fachsystematik-Ontology](https://github.com/tibonto/DFG-Fachsystematik-Ontology)
+  project.
+- `ProjectSubjectAssignment` — links a `ras.Project` to the subject that best
+  describes it (one subject per project).
+
+Both models derive from ColdFront's `ColdFrontModel` base, so they get
+change logging, tags and custom-field support for free.
 
 ### The hierarchy
 
@@ -35,74 +39,62 @@ Scientific Discipline (Wissenschaftsbereich)      e.g.  2 Life Sciences
         └── Subject (Fach)                               213-01 Systematics and Morphology (Zoology)
 ```
 
-### Easing the selection in the frontend
-
-ColdFront's built-in field of science dropdown is a flat list of all
-`FieldOfScience` rows. The plugin replaces the selection field in the
-project creation and update forms with a **searchable select2 dropdown whose
-options are the 214 DFG subjects, grouped by review board (Fachkollegium)**
-via `<optgroup>` headers:
-
-```
-111 Ancient Cultures · Alte Kulturen
-    111-01 — Prehistory and World Archaeology · Ur- und Frühgeschichte (weltweit)
-    111-02 — Greek and Latin Philology · Griechische und Lateinische Philologie
-    …
-112 History · Geschichtswissenschaften
-    …
-```
-
-Both the English and the German subject names are searchable, so a
-German-speaking PI finds "Ur- und Frühgeschichte" as easily as an
-English-speaking one finds "Prehistory". No custom JavaScript is needed:
-ColdFront already ships select2 and applies it to the widget class reused
-here.
-
-The data ships with the plugin
-(`src/coldfront_plugin_dfg_fachsystematik/data/Fachsystematik_2024-2028.csv`)
-and is the same bilingual CSV used by the
-[DFG-Fachsystematik-Ontology](https://github.com/tibonto/DFG-Fachsystematik-Ontology)
-project.
-
 ## Installation
 
-The plugin requires a working ColdFront deployment (tested against
-ColdFront 1.1.x). It is not published on PyPI (yet); install it directly
-from the
-[GitHub repository](https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik)
+The plugin requires a ColdFront 2.0.x deployment (Python ≥ 3.12,
+Django ≥ 5.2). It is not published on PyPI (yet); install it directly from
+the [GitHub repository](https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik)
 inside your ColdFront environment:
 
 ```console
-$ uv pip install git+https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik.git
+$ uv pip install "coldfront-plugin-dfg-fachsystematik @ git+https://github.com/yoshson/coldfront-plugin-dfg-fachsystematik.git@feat/coldfront-2"
 ```
 
-Enable the plugin by creating `coldfront/config/plugins/dfg_fachsystematik.py`
-in your ColdFront installation:
+Enable it by listing the plugin in the `PLUGINS` environment variable
+(comma-separated if you use several):
 
-```python
-from coldfront.config.base import INSTALLED_APPS
-
-INSTALLED_APPS += [
-    'coldfront_plugin_dfg_fachsystematik',
-]
+```console
+$ export PLUGINS=coldfront_plugin_dfg_fachsystematik
 ```
 
-and register it in `coldfront/config/settings.py`:
-
-```python
-plugin_configs['PLUGIN_DFG_FACHSYSTEMATIK'] = 'plugins/dfg_fachsystematik.py'
-```
-
-Then set `PLUGIN_DFG_FACHSYSTEMATIK=True` in your environment (or local
-settings) and run migrations:
+No plugin-specific configuration is required. Then run migrations and load
+the bundled Fachsystematik CSV:
 
 ```console
 $ coldfront migrate
+$ coldfront load_dfg_fachsystematik
 ```
 
-The initial migration automatically imports the Fachsystematik into the
-`FieldOfScience` table. The plugin hooks into the project forms at
-application startup — no further wiring is required.
+The data load is a separate step on this branch — `migrate` creates the
+tables, `load_dfg_fachsystematik` imports the 214 subjects.
+
+## What you get
+
+- **Project detail tab** — a *DFG Fachsystematik* tab on the project detail
+  page showing the assigned subject with its full ancestry (review board,
+  subject area, scientific discipline), with *Assign/Change/Remove* actions
+  for users who may change the project.
+- **Project detail panel** — a compact card on the project overview page
+  showing the assigned subject.
+- **Subject browser** — a bilingual, filterable list of all 214 subjects at
+  `/plugins/dfg-fachsystematik/subjects/` (also reachable from the
+  navigation menu, staff only). Both the English and the German names are
+  searchable at every level of the hierarchy, so a German-speaking PI finds
+  "Ur- und Frühgeschichte" as easily as an English-speaking one finds
+  "Prehistory". Filters exist for review board, subject area and scientific
+  discipline numbers.
+- **Django admin** — `DfgSubject` and `ProjectSubjectAssignment` are
+  registered for low-level housekeeping.
+
+### Permissions
+
+- Viewing the tab/panel and browsing subjects follows `ras.view_project` /
+  login, respectively.
+- Assigning, changing and removing a subject requires `ras.change_project`
+  (typically staff). The 1.x plugin let PIs choose the subject at project
+  creation; ColdFront 2.x has no object-level ownership permission hook yet,
+  so assignment is currently staff-only. This will be revisited once
+  ColdFront 2.x settles its permission model.
 
 ## Refreshing the data
 
@@ -115,88 +107,8 @@ $ coldfront load_dfg_fachsystematik --path Fachsystematik_2028-2032.csv
 ```
 
 Existing subjects are updated in place (matched by DFG number); subjects
-absent from the CSV remain in the database. Note that the importer manages
-the `description` of the DFG `FieldOfScience` rows — manual edits to those
-descriptions in the admin are reverted on the next import.
-
-## Settings
-
-| Setting | Default | Description |
-| --- | --- | --- |
-| `DFG_FACHSYSTEMATIK_PATCH_PROJECT_FORM` | `True` | Automatically integrate with ColdFront: replace the field of science selection in the project create/update forms with the grouped DFG selector, add it to the project admin change form, and swap in the DFG-aware `FieldOfScience` admin. Set to `False` if you want to wire things up yourself (use `coldfront_plugin_dfg_fachsystematik.forms.DfgFieldOfScienceChoiceField` and `admin.DfgFieldOfScienceAdmin`) or use the plugin purely as a data importer. |
-
-## Notes on the built-in field of science data
-
-- The prepopulated **NSF `FieldOfScience` rows are left untouched**, and
-  existing projects keep their values. Only the create/update forms and the
-  admin are narrowed to DFG subjects; `is_selectable` alone does not filter
-  the core forms.
-- When a project with a legacy NSF value is **edited**, the update form
-  offers only DFG subjects, so saving requires choosing a DFG subject —
-  a natural way to reclassify legacy projects over time.
-- ColdFront's FOS-based reports and searches operate on the
-  `description`, i.e. on the 214 DFG subjects (leaf level). Aggregations by
-  Fachgebiet/Fachkollegium are possible by joining through the plugin's
-  `DfgSubject` side table.
-
-### Interplay with `import_field_of_science_data`
-
-ColdFront's own `import_field_of_science_data` command **deletes and
-recreates all `FieldOfScience` rows**. On a fresh setup where that command is
-run after `migrate`, the DFG rows created by this plugin's data migration are
-wiped — simply re-run `load_dfg_fachsystematik` afterwards to restore them
-(the plugin's side table cleans itself up via cascade and is recreated with
-the data).
-
-⚠️ Do **not** re-run `import_field_of_science_data` on a database that has
-projects: `Project.field_of_science` is `on_delete=CASCADE`, so wiping the
-`FieldOfScience` table would delete the projects with it. This is core
-ColdFront behavior and applies with or without this plugin; it is mentioned
-here because DFG subjects live in the same table.
-
-## Django admin
-
-The plugin adds a *DFG subjects (Fächer)* admin section listing all imported
-subjects with their metadata and a link to the underlying `FieldOfScience`
-row, filterable by scientific discipline and subject area.
-
-ColdFront's own `FieldOfScience` admin is replaced with a DFG-aware variant:
-the list view links each row to its DFG subject metadata, search also matches
-DFG numbers and German names, and the canonical
-`"<Fachnummer> <English name>"` descriptions of DFG rows are read-only (the
-importer enforces them on every load, so manual edits would silently be
-reverted — see below). NSF rows remain editable as before, and the row behind
-`FieldOfScience.DEFAULT_PK` (the model-level default for new projects) is
-kept in place and selectable by the importer.
-
-On the project change page, the field of science is shown with the same
-grouped DFG selector as the front-end forms — without this, ColdFront 1.1.x
-omits `field_of_science` from its hardcoded admin change-form fields, so a
-subject could not be seen or corrected in the admin. (Without select2 being
-initialized on admin pages, the dropdown degrades to a plain, still-grouped
-`<select>`.)
-
-## How the form integration works
-
-ColdFront currently has no extension point for modifying form fields, and
-its forms select *all* `FieldOfScience` rows. At application startup
-(`AppConfig.ready()`), the plugin therefore:
-
-1. replaces `ProjectCreateView.form_class` with
-   `ProjectCreationFormWithDfgFieldOfScience`, whose `field_of_science`
-   field is the grouped DFG selector,
-2. wraps `ProjectUpdateView.get_form` to apply the same selector to the
-   generated update form (only if it contains a `field_of_science` field,
-   so a customized `PROJECT_UPDATE_FIELDS` is respected), and
-3. extends `ProjectAdmin` so the project admin change form shows
-   `field_of_science` (omitted by ColdFront 1.1.x's `fields_change` tuple)
-   with the same selector, via the `formfield_for_foreignkey` hook.
-
-The selection is saved by ColdFront's own ModelForm machinery on the
-project's native `field_of_science` foreign key — there is no extra save
-step, and the `project_new` signal sees the final value. All patching lives
-in `coldfront_plugin_dfg_fachsystematik/patch.py` and is the only module that
-needs adapting if ColdFront's internals change.
+absent from the CSV remain in the database, so existing assignments stay
+valid.
 
 ## Data quirks
 
@@ -208,11 +120,14 @@ are preserved.
 ## Development
 
 ```console
-$ uv sync
+$ uv sync --group coldfront2    # also pulls ColdFront 2.0.x from the upstream dev branch
 $ uv run pytest
 $ uv run ruff check
 $ uv run ruff format --check
 ```
 
 The parser is free of Django imports and covered by unit tests; the Django
-integration is intended to be exercised inside a ColdFront test deployment.
+integration is intended to be exercised inside a ColdFront 2.0.x test
+deployment. To regenerate migrations after model changes, sync with the
+`coldfront2` group and run `makemigrations coldfront_plugin_dfg_fachsystematik`
+against a ColdFront settings module.
